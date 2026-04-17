@@ -1,4 +1,4 @@
-# Intrusion
+# Intrusion Detection System
 
 This documentation provides an in-depth overview of the project, including its purpose, how to use it, configuration details, available features, requirements, installation process, and guidelines for contributing.
 
