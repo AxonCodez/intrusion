@@ -1,53 +1,130 @@
-# 🛡️ Real-Time Threat Detection Engine: How It Works
+Project Overview
+This repository implements a Streamlit dashboard, a FastAPI inference endpoint, and training utilities for a Random Forest‑based intrusion detection system (IDS). The README and EXPLANATION files describe the behavioral-AI approach, SMOTE balancing, and Random Forest voting logic used by the project.
 
-Imagine hiring a security guard for a very busy office building. 
+Repository structure
+This section lists the main files and their purpose in the repository.
 
-The **old way** of doing cybersecurity is simply handing the guard a list of known criminals (a blacklist). If someone shows an ID on that list, they get blocked. The problem? If a criminal uses a fake ID (a zero-day attack), the guard lets them right in.
+app.py — Streamlit dashboard UI and client-side inference flow.
+api.py — FastAPI backend providing the /analyze-traffic endpoint for model inference.
+train.py — Data extraction, feature selection, SMOTE resampling, model training, and artifact saving.
+requirements.txt — Python package dependencies.
+README.md / EXPLANATION.md — Project description and pipeline overview.
+Streamlit dashboard (app.py)
+The Streamlit app loads model artifacts, accepts CSV uploads, sanitizes data, runs inference locally (or via backend), and presents a threat intelligence report with visualizations and CSV export. Key behaviors include:
 
-Our **Intrusion Detection System (IDS)** uses the **new way** (Behavioral AI). It doesn't care about the name on the ID. Instead, it watches *how the person is acting*. If a visitor sprints through the lobby, drops 500 boxes, and tries to jiggle every door handle on the floor, the system instantly flags them as a threat.
+Loading rf_model.joblib, scaler.joblib, and features.joblib at startup.
+CSV upload and preprocessing: trim columns, replace infinite values, fill NaNs.
+Running model inference, computing classification and confidence per flow, and storing results in session state.
+Displaying summary metrics, pie chart, high-confidence alerts, and download button for report CSV.
+Example: model loading call in app.py
 
-Here is the step-by-step breakdown of how the brain inside our dashboard actually works.
+# app.py (snippet)
+import joblib
+model = joblib.load('rf_model.joblib')
+scaler = joblib.load('scaler.joblib')
+features = joblib.load('features.joblib')
+FastAPI backend (api.py)
+The FastAPI app exposes a POST /analyze-traffic endpoint that:
 
----
+Expects a JSON payload with an array of records under the "data" field.
+Loads model artifacts (rf_model.joblib, scaler.joblib, features.joblib) and returns HTTP 500 if not loaded.
+Validates presence of required feature columns and returns 400 when missing.
+Processes numeric features, scales them, predicts classes and probabilities, and returns classification and confidence for each record.
+API: Analyze Traffic
+POST /analyze-traffic
+Analyze Traffic
+Export to Postman
+Classify uploaded network flow records as Malicious or Benign and return confidence per record.
 
-## 🔬 1. The Anatomy of the Traffic (Telemetry)
-When your computer connects to a website, the data isn't sent in one giant chunk. It's chopped up into invisible little envelopes called **"Packets."**
+POST
+http://localhost:8000/analyze-traffic
+Headers
+Content-Type
+string • header
+required
+application/json
 
-Because hackers encrypt their attacks to hide the malicious code inside the envelopes, our AI doesn't even try to read the letters inside. Instead, it looks at the **metrics and physics** of the envelopes:
-*   **Packet Size:** Are the envelopes unusually massive?
-*   **Packet Frequency:** Are we receiving 10,000 tiny envelopes per second? 
-*   **Variance:** Are the envelopes wildly inconsistent in size?
+Request body
+JSON payload required for this request.
 
-The AI zeroes in on the **Top 15 most revealing metrics** to diagnose if the connection is safe (Benign) or an attack (Malicious).
+{
+  "data": [
+    {"feature1": 0.1, "feature2": 3.4, ...},
+    {"feature1": 0.2, "feature2": 1.2, ...}
+  ]
+}
+Code examples
+curl -X POST "http://localhost:8000/analyze-traffic" \
+  -H "Content-Type: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+  \"data\": [
+    {\"feature1\": 0.1, \"feature2\": 3.4, ...},
+    {\"feature1\": 0.2, \"feature2\": 1.2, ...}
+  ]
+}'
+Responses
+200
+400
+500
+Success
 
----
+{
+  "results": [
+    {"classification": "Benign", "confidence": 86.5},
+    {"classification": "Malicious", "confidence": 92.1}
+  ]
+}
+Missing feature columns
 
-## ⚖️ 2. The Sandbox Practice (SMOTE Algorithm)
-A major problem with training an AI in cybersecurity is that 90% of real internet traffic is completely boring and safe. If an AI just guesses "Safe" every single time, it will mathematically be 90% accurate by doing literally zero work. It gets lazy.
+{
+  "detail": "Missing columns: ['colA', 'colB']"
+}
+Model artifacts not loaded
 
-To fix this, we used an algorithm called **SMOTE** (Synthetic Minority Over-sampling Technique). 
-Think of SMOTE as a training simulator. During the model's training phase, SMOTE cloned, mutated, and generated synthetic dummy "Hackers" to bombard the AI until the traffic was equally balanced 50/50. This forced the AI to actually study and learn what an attack looks like rather than getting lazy.
+{
+  "detail": "Model not loaded."
+}
+Reference: endpoint implementation and payload model in api.py.
 
----
+Training pipeline (train.py)
+The training script performs the following steps:
 
-## 🌳 3. The 100 Detectives (Random Forest)
-The "Heart" of the AI is an extremely powerful algorithm called a **Random Forest**.
+Extracts CSV files from archive.zip into an extracted_data directory.
+Reads and concatenates CSVs, trims columns, removes NaNs and infinities, and maps the Label column to binary targets.
+Selects numeric columns and uses a preliminary RandomForest (n_estimators=20) to compute feature importances; selects top 15 features.
+Applies SMOTE to balance classes (k_neighbors chosen relative to minority class counts).
+Splits data, standardizes features with StandardScaler, and trains a final RandomForest with n_estimators=100.
+Saves rf_model.joblib, scaler.joblib, and features.joblib for use by the dashboard and API.
+Example training artifact saves:
 
-Instead of having just one AI try to figure out if the traffic is an attack, a Random Forest spawns **100 independent mini-AIs** (called Decision Trees). 
+joblib.dump(rf_final, 'rf_model.joblib')
+joblib.dump(scaler, 'scaler.joblib')
+joblib.dump(top_features, 'features.joblib')
+Dependencies
+The project lists required packages in requirements.txt. Key packages include Streamlit, scikit-learn, pandas, numpy, joblib, imbalanced-learn, plotly, and pydantic.
 
-When you upload a networking CSV into the UI to be scanned, the data is pushed out to all 100 detectives simultaneously. 
-*   One detective might focus strictly on how fast the data is moving.
-*   Another might look strictly at the max size of the envelopes.
-*   Another might look at the destination ports.
+requirements.txt (rendered)
 
-At the end of the millisecond, they all cast a vote. If 92 detectives vote "Malicious" and 8 vote "Benign," the overarching system stamps the traffic as **Malicious** with a **92% Confidence Score**.
-
----
-
-## 🚀 4. Putting it together (The Live Pipeline)
-When you use the tool, here is the journey the data takes:
-
-1. **The Upload:** You upload raw, messy export logs (CSV) of your network flows into the Streamlit dashboard.
-2. **The Sanitizer:** The dashboard instantly strips out corrupted files, broken text, and infinite numbers that might crash the math.
-3. **The Interrogation:** The scrubbed data is blasted to the background FastAPI server over JSON. The server immediately hands the data to the 100 Random Forest detectives.
-4. **The Verdict:** The mathematical voting happens in a fraction of a second, and a highly confident Threat Intelligence Report is pushed back to your screen, outlining the exact distribution of threats vs. normal traffic!
+streamlit
+scikit-learn
+pandas
+numpy
+joblib
+imbalanced-learn
+plotly
+pydantic
+Usage summary
+Train model: run train.py after placing dataset archive.zip in repo root. Artifacts saved: rf_model.joblib, scaler.joblib, features.joblib.
+Start API: run the FastAPI app (e.g., uvicorn api:app --reload) to serve /analyze-traffic.
+Start UI: run Streamlit (e.g., streamlit run app.py) to open the dashboard for CSV uploads and analysis. The UI loads the saved artifacts and runs inference.
+Key implementation details and behaviors
+Label mapping: Labels containing 'BENIGN' are mapped to 0; all others map to 1 for malicious.
+Feature selection: Top 15 numeric features chosen by initial RandomForest importance.
+Inference output: Each record is returned with "classification" ("Malicious" or "Benign") and "confidence" (percentage). This format is used both in UI session state and API responses.
+Files cited
+README.md / EXPLANATION.md — project overview and pipeline description.
+app.py — Streamlit application and client inference logic.
+api.py — FastAPI inference endpoint implementation.
+train.py — training flow, SMOTE usage, feature selection, and artifact saving.
+requirements.txt — dependency list.
