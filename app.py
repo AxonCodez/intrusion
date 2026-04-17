@@ -117,7 +117,7 @@ if uploaded_file is not None:
                     
                     results = []
                     for pred, prob in zip(predictions, probabilities):
-                        classification = class_names[int(pred)] if int(pred) < len(class_names) else "Unknown Threat"
+                        classification = CLASS_NAMES.get(int(pred), "Unknown Threat")
                         confidence = float(max(prob) * 100)
                         results.append({"classification": classification, "confidence": confidence})
                         
