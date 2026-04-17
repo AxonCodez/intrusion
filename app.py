@@ -110,14 +110,12 @@ if uploaded_file is not None:
                     st.write(f"Running {engine_choice} Multi-Class Inference...")
                     X_scaled = scaler.transform(X)
                     
-                    # Convert to float to avoid XGBoost feature_names mismatch or internal dtype issues
-                    # Or just run predict since it's an array now due to scaler
                     predictions = model_to_use.predict(X_scaled)
                     probabilities = model_to_use.predict_proba(X_scaled)
                     
                     results = []
                     for pred, prob in zip(predictions, probabilities):
-                        classification = CLASS_NAMES.get(int(pred), "Unknown Threat")
+                        classification = class_names[int(pred)] if int(pred) < len(class_names) else "Unknown Threat"
                         confidence = float(max(prob) * 100)
                         results.append({"classification": classification, "confidence": confidence})
                         
