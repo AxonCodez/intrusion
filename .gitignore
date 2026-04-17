@@ -24,5 +24,3 @@ extracted_data/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-# Large ML model files (>100MB - use Git LFS or download separately)
-rf_model.joblib
