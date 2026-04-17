@@ -7,12 +7,18 @@ import numpy as np
 
 @st.cache_resource
 def load_models():
-    model = joblib.load('rf_model.joblib')
+    rf_model = joblib.load('rf_model.joblib')
+    xgb_model = joblib.load('xgb_model.joblib')
     scaler = joblib.load('scaler.joblib')
     features = joblib.load('features.joblib')
-    return model, scaler, features
+    # Load dynamically built class list from train.py
+    try:
+        class_names = joblib.load('classes.joblib')
+    except (FileNotFoundError, Exception):
+        class_names = ["Safe", "DDoS", "DoS", "Infiltration", "Brute-Force", "Web-Attack"]
+    return rf_model, xgb_model, scaler, features, class_names
 
-model, scaler, features = load_models()
+rf_model, xgb_model, scaler, features, class_names = load_models()
 
 st.set_page_config(page_title="IDS Engine", layout="wide", page_icon="🛡️")
 
@@ -77,8 +83,18 @@ if uploaded_file is not None:
     with st.expander("🔍 View Raw Telemetry Preview", expanded=False):
         st.dataframe(df.head(), use_container_width=True)
     
+    
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🛡️ Initialize Threat Analysis"):
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        engine_choice = st.selectbox("Select ML Inference Engine", ["Random Forest", "XGBoost"])
+        model_to_use = rf_model if engine_choice == "Random Forest" else xgb_model
+        
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        init_btn = st.button("🛡️ Initialize Threat Analysis")
+        
+    if init_btn:
         with st.status("Analyzing traffic signatures...", expanded=True) as status:
             try:
                 st.write("Processing telemetry locally...")
@@ -91,14 +107,17 @@ if uploaded_file is not None:
                     X.replace([np.inf, -np.inf], np.nan, inplace=True)
                     X.fillna(0, inplace=True)
                     
-                    st.write("Running Random Forest Inference...")
+                    st.write(f"Running {engine_choice} Multi-Class Inference...")
                     X_scaled = scaler.transform(X)
-                    predictions = model.predict(X_scaled)
-                    probabilities = model.predict_proba(X_scaled)
+                    
+                    # Convert to float to avoid XGBoost feature_names mismatch or internal dtype issues
+                    # Or just run predict since it's an array now due to scaler
+                    predictions = model_to_use.predict(X_scaled)
+                    probabilities = model_to_use.predict_proba(X_scaled)
                     
                     results = []
                     for pred, prob in zip(predictions, probabilities):
-                        classification = "Malicious" if pred == 1 else "Benign"
+                        classification = class_names[int(pred)] if int(pred) < len(class_names) else "Unknown Threat"
                         confidence = float(max(prob) * 100)
                         results.append({"classification": classification, "confidence": confidence})
                         
@@ -115,14 +134,14 @@ if uploaded_file is not None:
         st.markdown("---")
         st.markdown("### 📋 Threat Intelligence Report")
         
-        malicious_count = len(report_df[report_df['Classification'] == 'Malicious'])
+        malicious_count = len(report_df[report_df['Classification'] != 'Safe'])
         benign_count = len(report_df) - malicious_count
         
         col1, col2, col3 = st.columns(3)
         with col1:
             st.markdown(f"<div class='metric-card'><h4>📡 Flows Scanned</h4><h2>{len(report_df)}</h2></div>", unsafe_allow_html=True)
         with col2:
-            st.markdown(f"<div class='metric-card' style='border-left-color: #4CAF50;'><h4>✅ Benign</h4><h2 style='color: #4CAF50;'>{benign_count}</h2></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='metric-card' style='border-left-color: #4CAF50;'><h4>✅ Safe</h4><h2 style='color: #4CAF50;'>{benign_count}</h2></div>", unsafe_allow_html=True)
         with col3:
             st.markdown(f"<div class='metric-card' style='border-left-color: #f44336;'><h4>🚨 Threats Detected</h4><h2 style='color: #f44336;'>{malicious_count}</h2></div>", unsafe_allow_html=True)
         
@@ -130,7 +149,15 @@ if uploaded_file is not None:
         
         with tab1:
             fig = px.pie(report_df, names='Classification', color='Classification', 
-                         color_discrete_map={'Benign':'#4CAF50', 'Malicious':'#f44336'},
+                         color_discrete_map={
+                             'Safe': '#4CAF50', 
+                             'DDoS': '#f44336', 
+                             'DoS': '#ff9800', 
+                             'Infiltration': '#9c27b0', 
+                             'Brute-Force': '#e91e63', 
+                             'Web-Attack': '#3f51b5',
+                             'Unknown Threat': '#607d8b'
+                         },
                          hole=0.7)
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                               font_color='#c5c6c7', showlegend=False,
@@ -138,7 +165,7 @@ if uploaded_file is not None:
             st.plotly_chart(fig, use_container_width=True)
         
         with tab2:
-            threats = report_df[report_df['Classification'] == 'Malicious'].sort_values(by='Confidence (%)', ascending=False)
+            threats = report_df[report_df['Classification'] != 'Safe'].sort_values(by='Confidence (%)', ascending=False)
             st.markdown("<br>", unsafe_allow_html=True)
             if not threats.empty:
                 st.dataframe(threats[['Classification', 'Confidence (%)']].head(20), use_container_width=True)

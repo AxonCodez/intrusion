@@ -6,3 +6,5 @@ joblib
 imbalanced-learn
 plotly
 pydantic
+xgboost
+shap
