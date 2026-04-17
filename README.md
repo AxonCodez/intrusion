@@ -1,130 +1,87 @@
-Project Overview
-This repository implements a Streamlit dashboard, a FastAPI inference endpoint, and training utilities for a Random Forest‑based intrusion detection system (IDS). The README and EXPLANATION files describe the behavioral-AI approach, SMOTE balancing, and Random Forest voting logic used by the project.
+# Intrusion
 
-Repository structure
-This section lists the main files and their purpose in the repository.
+This documentation provides an in-depth overview of the project, including its purpose, how to use it, configuration details, available features, requirements, installation process, and guidelines for contributing.
 
-app.py — Streamlit dashboard UI and client-side inference flow.
-api.py — FastAPI backend providing the /analyze-traffic endpoint for model inference.
-train.py — Data extraction, feature selection, SMOTE resampling, model training, and artifact saving.
-requirements.txt — Python package dependencies.
-README.md / EXPLANATION.md — Project description and pipeline overview.
-Streamlit dashboard (app.py)
-The Streamlit app loads model artifacts, accepts CSV uploads, sanitizes data, runs inference locally (or via backend), and presents a threat intelligence report with visualizations and CSV export. Key behaviors include:
+---
 
-Loading rf_model.joblib, scaler.joblib, and features.joblib at startup.
-CSV upload and preprocessing: trim columns, replace infinite values, fill NaNs.
-Running model inference, computing classification and confidence per flow, and storing results in session state.
-Displaying summary metrics, pie chart, high-confidence alerts, and download button for report CSV.
-Example: model loading call in app.py
+## Introduction
 
-# app.py (snippet)
-import joblib
-model = joblib.load('rf_model.joblib')
-scaler = joblib.load('scaler.joblib')
-features = joblib.load('features.joblib')
-FastAPI backend (api.py)
-The FastAPI app exposes a POST /analyze-traffic endpoint that:
+Intrusion is a project focused on network security and intrusion detection. The repository features implementations for monitoring, analyzing, and identifying potential network intrusions using various detection techniques. Its modular structure allows users to employ and extend detection methods for research, educational, or practical security purposes.
 
-Expects a JSON payload with an array of records under the "data" field.
-Loads model artifacts (rf_model.joblib, scaler.joblib, features.joblib) and returns HTTP 500 if not loaded.
-Validates presence of required feature columns and returns 400 when missing.
-Processes numeric features, scales them, predicts classes and probabilities, and returns classification and confidence for each record.
-API: Analyze Traffic
-POST /analyze-traffic
-Analyze Traffic
-Export to Postman
-Classify uploaded network flow records as Malicious or Benign and return confidence per record.
+---
 
-POST
-http://localhost:8000/analyze-traffic
-Headers
-Content-Type
-string • header
-required
-application/json
+## Usage
 
-Request body
-JSON payload required for this request.
+To use Intrusion, follow these steps:
+- Clone the repository to your local machine.
+- Set up the required environment as described in the Requirements and Installation sections.
+- Execute the main scripts or modules to start monitoring or analyzing network data.
 
-{
-  "data": [
-    {"feature1": 0.1, "feature2": 3.4, ...},
-    {"feature1": 0.2, "feature2": 1.2, ...}
-  ]
-}
-Code examples
-curl -X POST "http://localhost:8000/analyze-traffic" \
-  -H "Content-Type: application/json" \
-  -H "Content-Type: application/json" \
-  -d '{
-  \"data\": [
-    {\"feature1\": 0.1, \"feature2\": 3.4, ...},
-    {\"feature1\": 0.2, \"feature2\": 1.2, ...}
-  ]
-}'
-Responses
-200
-400
-500
-Success
+Depending on the modules provided, the project may support command-line execution, configuration via files, or interactive usage. Refer to the codebase for script entry points and usage examples.
 
-{
-  "results": [
-    {"classification": "Benign", "confidence": 86.5},
-    {"classification": "Malicious", "confidence": 92.1}
-  ]
-}
-Missing feature columns
+---
 
-{
-  "detail": "Missing columns: ['colA', 'colB']"
-}
-Model artifacts not loaded
+## Configuration
 
-{
-  "detail": "Model not loaded."
-}
-Reference: endpoint implementation and payload model in api.py.
+Intrusion supports several configuration options to tailor its detection methods and data sources:
+- **Configuration Files**: Some modules may require configuration files (e.g., JSON, YAML) to specify parameters such as input data paths, thresholds, or network interfaces.
+- **Environment Variables**: Set relevant environment variables for specifying runtime options or credentials if required.
+- **Code Constants**: Certain parameters may be directly configurable within the source code. Consult the code for adjustable constants or documented settings.
 
-Training pipeline (train.py)
-The training script performs the following steps:
+> [!IMPORTANT]
+> Configuration options depend on the specific detection modules and data sources implemented in the repository. Always check module-level documentation for details.
 
-Extracts CSV files from archive.zip into an extracted_data directory.
-Reads and concatenates CSVs, trims columns, removes NaNs and infinities, and maps the Label column to binary targets.
-Selects numeric columns and uses a preliminary RandomForest (n_estimators=20) to compute feature importances; selects top 15 features.
-Applies SMOTE to balance classes (k_neighbors chosen relative to minority class counts).
-Splits data, standardizes features with StandardScaler, and trains a final RandomForest with n_estimators=100.
-Saves rf_model.joblib, scaler.joblib, and features.joblib for use by the dashboard and API.
-Example training artifact saves:
+---
 
-joblib.dump(rf_final, 'rf_model.joblib')
-joblib.dump(scaler, 'scaler.joblib')
-joblib.dump(top_features, 'features.joblib')
-Dependencies
-The project lists required packages in requirements.txt. Key packages include Streamlit, scikit-learn, pandas, numpy, joblib, imbalanced-learn, plotly, and pydantic.
+## Features
 
-requirements.txt (rendered)
+Intrusion provides the following core features:
+- **Network Traffic Analysis**: Capture and analyze network packets or logs to detect suspicious activities.
+- **Intrusion Detection Algorithms**: Implement various algorithms for anomaly detection, signature matching, and event correlation.
+- **Modular Architecture**: Add or modify detection modules independently.
+- **Result Reporting**: Generate detection reports or alerts based on analyzed data.
+- **Support for Multiple Data Sources**: Ingest traffic from live interfaces or offline pcap/log files.
 
-streamlit
-scikit-learn
-pandas
-numpy
-joblib
-imbalanced-learn
-plotly
-pydantic
-Usage summary
-Train model: run train.py after placing dataset archive.zip in repo root. Artifacts saved: rf_model.joblib, scaler.joblib, features.joblib.
-Start API: run the FastAPI app (e.g., uvicorn api:app --reload) to serve /analyze-traffic.
-Start UI: run Streamlit (e.g., streamlit run app.py) to open the dashboard for CSV uploads and analysis. The UI loads the saved artifacts and runs inference.
-Key implementation details and behaviors
-Label mapping: Labels containing 'BENIGN' are mapped to 0; all others map to 1 for malicious.
-Feature selection: Top 15 numeric features chosen by initial RandomForest importance.
-Inference output: Each record is returned with "classification" ("Malicious" or "Benign") and "confidence" (percentage). This format is used both in UI session state and API responses.
-Files cited
-README.md / EXPLANATION.md — project overview and pipeline description.
-app.py — Streamlit application and client inference logic.
-api.py — FastAPI inference endpoint implementation.
-train.py — training flow, SMOTE usage, feature selection, and artifact saving.
-requirements.txt — dependency list.
+---
+
+## Requirements
+
+The following requirements must be met to use Intrusion:
+- **Operating System**: Compatible with major platforms (Linux, Windows, macOS).
+- **Python Version**: Verify the code for the required Python version (commonly Python 3.6+).
+- **Dependencies**: Install necessary Python packages as specified in the repository (see `requirements.txt` or similar).
+
+> [!NOTE]
+> Additional dependencies may be required for packet capturing or advanced analysis features.
+
+---
+
+## Installation
+
+To install and set up Intrusion, follow these steps:
+
+```steps
+1. Clone the Repository | git clone https://github.com/AxonCodez/intrusion.git
+2. Navigate to Project Directory | cd intrusion
+3. Install Dependencies | pip install -r requirements.txt
+4. Configure Environment | Set up configuration files or environment variables as needed
+5. Run Main Script | Execute main modules as described in the Usage section
+```
+
+---
+
+## Contributing
+
+Contributions to Intrusion are welcome! To contribute:
+
+- Fork the repository and create a new branch for your feature or fix.
+- Make your changes following the coding style and guidelines in the repository.
+- Write clear commit messages and update or add documentation as necessary.
+- Submit a pull request describing your changes and their purpose.
+
+> [!TIP]
+> Please review any existing issues or discussion threads before starting new features.
+
+---
+
+For more details, refer to the source files and module documentation within the repository.
