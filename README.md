@@ -6,41 +6,40 @@ This documentation provides an in-depth overview of the project, including its p
 
 ## Introduction
 
-Intrusion is a project focused on network security and intrusion detection. The repository features implementations for monitoring, analyzing, and identifying potential network intrusions using various detection techniques. Its modular structure allows users to employ and extend detection methods for research, educational, or practical security purposes.
+Intrusion is a project focused on network security and behavioral threat detection. The repository features a real-time Intrusion Detection System (IDS) dashboard powered by a Random Forest machine learning classifier trained on the CICIDS2017 dataset. Its native Streamlit architecture allows users to employ lightning-fast mathematical detection methods for research, educational, or practical security purposes.
 
 ---
 
 ## Usage
 
-To use Intrusion, follow these steps:
-- Clone the repository to your local machine.
+To use the Intrusion Detection Engine, follow these steps:
+- Clone the repository to your local machine (or host it directly on Streamlit Community Cloud).
 - Set up the required environment as described in the Requirements and Installation sections.
-- Execute the main scripts or modules to start monitoring or analyzing network data.
-
-Depending on the modules provided, the project may support command-line execution, configuration via files, or interactive usage. Refer to the codebase for script entry points and usage examples.
+- Execute the Streamlit UI to start analyzing offline network data.
+- Upload a `.csv` packet capture file into the dashboard.
+- Click **Initialize Threat Analysis** to seamlessly predict Malicious or Safe traffic in real-time.
 
 ---
 
 ## Configuration
 
-Intrusion supports several configuration options to tailor its detection methods and data sources:
-- **Configuration Files**: Some modules may require configuration files (e.g., JSON, YAML) to specify parameters such as input data paths, thresholds, or network interfaces.
-- **Environment Variables**: Set relevant environment variables for specifying runtime options or credentials if required.
-- **Code Constants**: Certain parameters may be directly configurable within the source code. Consult the code for adjustable constants or documented settings.
+Intrusion handles machine learning inference natively within the UI, significantly reducing configuration pain:
+- **Automatic Caching**: The 39MB serialized Random Forest model (`rf_model.joblib`), scaler, and feature set are loaded internally into RAM using Streamlit `@st.cache_resource` for maximum speed.
+- **Offline ML Tuning**: If you wish to retrain the algorithm boundaries or use a different dataset, run `train.py` directly. This will recalculate the SMOTE balancing and export fresh `.joblib` artifacts.
 
 > [!IMPORTANT]
-> Configuration options depend on the specific detection modules and data sources implemented in the repository. Always check module-level documentation for details.
+> The default model is designed to analyze 15 highly specific network features. Ensure your CSV uploads match the features natively logged in the CICIDS2017 schema.
 
 ---
 
 ## Features
 
 Intrusion provides the following core features:
-- **Network Traffic Analysis**: Capture and analyze network packets or logs to detect suspicious activities.
-- **Intrusion Detection Algorithms**: Implement various algorithms for anomaly detection, signature matching, and event correlation.
-- **Modular Architecture**: Add or modify detection modules independently.
-- **Result Reporting**: Generate detection reports or alerts based on analyzed data.
-- **Support for Multiple Data Sources**: Ingest traffic from live interfaces or offline pcap/log files.
+- **Network Traffic Analysis**: Analyze massive `.csv` network logs to detect suspicious activities (DDoS, Brute Force, Web Attacks).
+- **Intrusion Detection Algorithms**: Implements a highly robust 100-tree Random Forest algorithm optimized for accuracy and low latency.
+- **Native Web Interface**: Fully packaged, cinematic dark-themed Streamlit web interface removing the need for terminal interpretation.
+- **Result Reporting**: Generates interactive Threat Distribution plots, high-confidence alerts, and natively exports classified reports back to CSV.
+- **Cloud Ready**: Architecture optimized to be hosted natively on Streamlit Community Cloud without background server dependencies.
 
 ---
 
@@ -48,11 +47,11 @@ Intrusion provides the following core features:
 
 The following requirements must be met to use Intrusion:
 - **Operating System**: Compatible with major platforms (Linux, Windows, macOS).
-- **Python Version**: Verify the code for the required Python version (commonly Python 3.6+).
-- **Dependencies**: Install necessary Python packages as specified in the repository (see `requirements.txt` or similar).
+- **Python Version**: Python 3.8+ recommended.
+- **Dependencies**: Install necessary Python packages via pip: `streamlit`, `scikit-learn`, `pandas`, `imbalanced-learn`, `plotly`, etc.
 
 > [!NOTE]
-> Additional dependencies may be required for packet capturing or advanced analysis features.
+> Training (`train.py`) requires significant RAM when applying SMOTE generation to massive network datasets.
 
 ---
 
@@ -64,8 +63,8 @@ To install and set up Intrusion, follow these steps:
 1. Clone the Repository | git clone https://github.com/AxonCodez/intrusion.git
 2. Navigate to Project Directory | cd intrusion
 3. Install Dependencies | pip install -r requirements.txt
-4. Configure Environment | Set up configuration files or environment variables as needed
-5. Run Main Script | Execute main modules as described in the Usage section
+4. Run the Engine | streamlit run app.py
+5. Test Inference | Upload your network flow CSV to the local http://localhost:8501 dashboard
 ```
 
 ---
@@ -80,8 +79,4 @@ Contributions to Intrusion are welcome! To contribute:
 - Submit a pull request describing your changes and their purpose.
 
 > [!TIP]
-> Please review any existing issues or discussion threads before starting new features.
-
----
-
-For more details, refer to the source files and module documentation within the repository.
+> Please review any existing issues or discussion threads before starting new features. Ensure any ML feature alterations are logged.
